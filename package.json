@@ -1,5 +1,5 @@
 {
-  "name": "svq",
+  "name": "svg-query",
   "version": "0.1.0",
   "description": "svg query — inspect SVG files layer-by-layer for LLM-driven UI generation.",
   "type": "module",

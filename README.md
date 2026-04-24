@@ -1,4 +1,6 @@
-# svq — svg query
+# svg-query
+
+Command: `svq`. npm package: [`svg-query`](https://www.npmjs.com/package/svg-query).
 
 A CLI for inspecting SVG files layer-by-layer, designed for LLM-driven UI generation.
 
@@ -12,10 +14,10 @@ Figma-style SVG exports are flat (no nested layers), often contain monster `<pat
 
 ```sh
 # no install — just run it
-npx svq analyze design.svg
+npx svg-query analyze design.svg
 
-# or install globally
-npm i -g svq
+# or install globally (gives you the short `svq` command)
+npm i -g svg-query
 svq analyze design.svg
 ```
 
