@@ -7,7 +7,7 @@ import { runComponents } from "./commands/components.js";
 const program = new Command();
 
 program
-  .name("svgq")
+  .name("svq")
   .description("Inspect SVG files layer-by-layer for LLM-driven UI generation.")
   .version("0.1.0");
 

@@ -79,7 +79,7 @@ describe("integration: card.svg (Figma-style flat card)", () => {
     // Index 5 is the body-text path (many small subpaths = flagged as text).
     const out = capture(() => runGet(card, "5", { crop: true, digest: true }));
     assert.match(out, /\[subpaths=\d+ bytes=\d+ likely-text\]/);
-    assert.match(out, /data-svgq-digest="1"/);
+    assert.match(out, /data-svq-digest="1"/);
   });
 
   it("get A..B extracts a contiguous range", () => {

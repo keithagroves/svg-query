@@ -1,8 +1,8 @@
-# svgq — svg query
+# svq — svg query
 
 A CLI for inspecting SVG files layer-by-layer, designed for LLM-driven UI generation.
 
-Figma-style SVG exports are flat (no nested layers), often contain monster `<path>` attributes that blow through context windows, and flatten text into paths. `svgq` turns one of those files into three small, structured views an LLM can actually work with:
+Figma-style SVG exports are flat (no nested layers), often contain monster `<path>` attributes that blow through context windows, and flatten text into paths. `svq` turns one of those files into three small, structured views an LLM can actually work with:
 
 - **design tokens** — colors, radii, strokes, gradients, filters
 - **semantic component tree** — recovered from spatial containment
@@ -12,37 +12,37 @@ Figma-style SVG exports are flat (no nested layers), often contain monster `<pat
 
 ```sh
 # no install — just run it
-npx svgq analyze design.svg
+npx svq analyze design.svg
 
 # or install globally
-npm i -g svgq
-svgq analyze design.svg
+npm i -g svq
+svq analyze design.svg
 ```
 
 ## Commands
 
 | Command                         | What it does                                                                 |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| `svgq analyze <file>`           | Design tokens summary (colors, radii, strokes, gradients, filters). Warns when text is flattened to paths. |
-| `svgq tree <file>`              | One-line-per-element overview: index, classification, bbox, fill, path size, defs references. |
-| `svgq components <file>`        | Infers a component hierarchy from spatial containment — recovers structure Figma flattened. |
-| `svgq get <file> <N\|A..B>`     | Extracts element(s) as a standalone SVG with only the defs they reference. Flags: `--crop` (shrink viewBox to bbox), `--digest` (replace huge `d` attributes with a summary). |
+| `svq analyze <file>`           | Design tokens summary (colors, radii, strokes, gradients, filters). Warns when text is flattened to paths. |
+| `svq tree <file>`              | One-line-per-element overview: index, classification, bbox, fill, path size, defs references. |
+| `svq components <file>`        | Infers a component hierarchy from spatial containment — recovers structure Figma flattened. |
+| `svq get <file> <N\|A..B>`     | Extracts element(s) as a standalone SVG with only the defs they reference. Flags: `--crop` (shrink viewBox to bbox), `--digest` (replace huge `d` attributes with a summary). |
 
 ## Typical workflow
 
 Hand these three outputs to an LLM (or a human) in order:
 
 ```sh
-svgq analyze design.svg         # design tokens as CSS vars
-svgq components design.svg      # visual hierarchy / cluster tree
-svgq get design.svg 4 --crop    # pull an icon out unmodified
-svgq get design.svg 1..8 --crop --digest   # whole card, compacted
+svq analyze design.svg         # design tokens as CSS vars
+svq components design.svg      # visual hierarchy / cluster tree
+svq get design.svg 4 --crop    # pull an icon out unmodified
+svq get design.svg 1..8 --crop --digest   # whole card, compacted
 ```
 
 The `--digest` flag replaces paths longer than 4KB with a summary like:
 
 ```xml
-<path d="[subpaths=112 bytes=62849 likely-text]" fill="#464554" data-svgq-digest="1"/>
+<path d="[subpaths=112 bytes=62849 likely-text]" fill="#464554" data-svq-digest="1"/>
 ```
 
 The LLM still sees the bbox, fill, and that this is probably flattened text — it just doesn't get hit with 60KB of path data.
@@ -52,14 +52,14 @@ The LLM still sees the bbox, fill, and that this is probably flattened text — 
 A 178KB Figma feature-card export:
 
 ```
-$ svgq analyze design.svg
+$ svq analyze design.svg
 Dimensions: 446 × 354
 Fills: #1a1c1f ×3, #464554 ×3, #f3f3f8 ×2, #2e31b7 ×1, #e2e2e7 ×1, white ×2
 Corner radii (rx): 33.2, 17.1, 9.6, 34.3
 Gradients: 1 linear
 ⚠ Flattened text detected. Re-export with "Outline Text" off for much better UI generation.
 
-$ svgq components design.svg
+$ svq components design.svg
 [1] rect  (1,44 443×146) fill=#F3F3F8               ← card
   [3] rect  (19,62 34×34) fill=url(#paint0_linear…) ← icon chip
     [4] icon?  (27,70 16×16) fill=white
@@ -69,7 +69,7 @@ $ svgq components design.svg
   [8] text(flattened)  (19,135 366×33) fill=#464554 ← body
 …
 
-$ svgq get design.svg 1..8 --crop --digest | wc -c
+$ svq get design.svg 1..8 --crop --digest | wc -c
 1607
 ```
 
@@ -87,7 +87,7 @@ $ svgq get design.svg 1..8 --crop --digest | wc -c
 
 - **z-order = paint order**: first child is visually at the bottom, last is on top. Match this in the generated DOM (later siblings on top, or use stacking).
 - **Transforms**: `translate`, `scale`, and `matrix` are supported. `rotate` and `skew` are ignored — fine for typical Figma exports but worth knowing if bboxes look off.
-- **Real `<text>` elements**: rare in Figma exports, but if present, just read them directly — `svgq` focuses on the flattened case.
+- **Real `<text>` elements**: rare in Figma exports, but if present, just read them directly — `svq` focuses on the flattened case.
 
 ## License
 

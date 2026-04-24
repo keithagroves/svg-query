@@ -18,7 +18,7 @@ function maybeDigestPaths(node: SvgNode, enable: boolean): SvgNode {
       const digestAttr = `[subpaths=${dg.subpathCount} bytes=${dg.dLength}${dg.likelyText ? " likely-text" : ""}]`;
       return {
         ...node,
-        attrs: { ...node.attrs, d: digestAttr, "data-svgq-digest": "1" },
+        attrs: { ...node.attrs, d: digestAttr, "data-svq-digest": "1" },
       };
     }
   }

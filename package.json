@@ -1,11 +1,11 @@
 {
-  "name": "svgq",
+  "name": "svq",
   "version": "0.1.0",
   "description": "svg query — inspect SVG files layer-by-layer for LLM-driven UI generation.",
   "type": "module",
   "main": "./dist/cli.js",
   "bin": {
-    "svgq": "./bin/svgq.mjs"
+    "svq": "./bin/svq.mjs"
   },
   "files": [
     "bin",
@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
-    "start": "node bin/svgq.mjs",
+    "start": "node bin/svq.mjs",
     "test": "node --import tsx --test test/**/*.test.ts",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm test && npm run build",
