@@ -1,0 +1,10 @@
+<svg width="100" height="40" viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#shadow1)">
+<rect x="5" y="5" width="90" height="30" rx="6" fill="white"/>
+</g>
+<defs>
+<filter id="shadow1" x="0" y="0" width="100" height="40" filterUnits="userSpaceOnUse">
+<feGaussianBlur stdDeviation="2"/>
+</filter>
+</defs>
+</svg>
