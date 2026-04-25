@@ -25,10 +25,11 @@ svq analyze design.svg
 
 | Command                         | What it does                                                                 |
 | ------------------------------- | ---------------------------------------------------------------------------- |
-| `svq analyze <file>`           | Design tokens summary (colors, radii, strokes, gradients, filters). Warns when text is flattened to paths. |
-| `svq tree <file>`              | One-line-per-element overview: index, classification, bbox, fill, path size, defs references. |
-| `svq components <file>`        | Infers a component hierarchy from spatial containment — recovers structure Figma flattened. |
-| `svq get <file> <N\|A..B>`     | Extracts element(s) as a standalone SVG with only the defs they reference. Flags: `--crop` (shrink viewBox to bbox), `--digest` (replace huge `d` attributes with a summary). |
+| `svq analyze <file>`           | Design tokens summary (colors, radii, strokes, gradients with resolved stops, filters). Warns when text is flattened to paths or the file embeds a raster bitmap. |
+| `svq tree <file>`              | One-line-per-element overview: index, classification, bbox, fill, path size, defs references. `--resolve-paints` expands `url(#…)` fills inline. |
+| `svq components <file>`        | Infers a component hierarchy from spatial containment. Auto-unwraps Figma's full-canvas wrapper `<g>`, folds `fill+stroke` sibling pairs, flags image-frame patterns. `--resolve-paints` expands gradient/pattern fills. |
+| `svq get <file> <N\|A..B>`     | Extracts element(s) as a standalone SVG with only the defs they reference. Flags: `--crop` (shrink viewBox to bbox), `--digest` (replace huge `d` attributes and embedded `data:` images with a summary), `--bbox x,y,w,h` (only include elements intersecting that region), `--out <path>` (write to file with a stderr summary). |
+| `svq at <file> <x>,<y>`        | Lists every element whose bbox contains the point, smallest first — handy for finding the most specific element under a coordinate. |
 
 ## Typical workflow
 

@@ -1,14 +1,20 @@
+import { writeFileSync } from "node:fs";
 import { parseSvgFile, serializeSvg } from "../parser.js";
 import { collectRefs, resolveDefsClosure } from "../refs.js";
 import { computeBbox } from "../bbox.js";
 import { digestPath } from "../digest.js";
+import { bboxIntersects, fmtSize, parseBboxSpec } from "../format.js";
 import type { SvgNode } from "../types.js";
 
 export type GetOptions = {
   crop?: boolean;
   digest?: boolean;
   pretty?: boolean;
+  bbox?: string;
+  out?: string;
 };
+
+const RASTER_DIGEST_MIN = 200;
 
 function maybeDigestPaths(node: SvgNode, enable: boolean): SvgNode {
   if (!enable) return node;
@@ -22,10 +28,29 @@ function maybeDigestPaths(node: SvgNode, enable: boolean): SvgNode {
       };
     }
   }
+  if (node.tag === "image") {
+    const digested = digestRasterAttrs(node.attrs);
+    if (digested) return { ...node, attrs: digested };
+  }
   return {
     ...node,
     children: node.children.map((c) => maybeDigestPaths(c, enable)),
   };
+}
+
+// Embedded <image href="data:..."> blobs (Figma sometimes wraps a PNG in an
+// SVG shell) often dwarf the actual vector content. --digest collapses them
+// the same way it collapses long path d attributes, preserving the mime type
+// and byte count so the consumer still knows it's a bitmap and how big.
+function digestRasterAttrs(attrs: Record<string, string>): Record<string, string> | null {
+  const hrefKey = attrs.href != null ? "href" : attrs["xlink:href"] != null ? "xlink:href" : null;
+  if (!hrefKey) return null;
+  const href = attrs[hrefKey];
+  if (!href.startsWith("data:") || href.length < RASTER_DIGEST_MIN) return null;
+  const m = href.match(/^data:([^;,]+)/);
+  const mime = m ? m[1] : "data";
+  const summary = `[bytes=${href.length} ${mime}]`;
+  return { ...attrs, [hrefKey]: summary, "data-svq-digest": "1" };
 }
 
 export function runGet(path: string, indexSpec: string, opts: GetOptions): void {
@@ -33,9 +58,20 @@ export function runGet(path: string, indexSpec: string, opts: GetOptions): void 
   const nonDefs = svg.topChildren.filter((c) => c.tag !== "defs");
 
   const [start, end] = parseRange(indexSpec, nonDefs.length);
-  const selection = nonDefs.slice(start, end + 1);
+  let selection = nonDefs.slice(start, end + 1);
   if (selection.length === 0) {
     throw new Error(`Index range ${indexSpec} yielded no elements (have ${nonDefs.length}).`);
+  }
+
+  if (opts.bbox) {
+    const region = parseBboxSpec(opts.bbox);
+    selection = selection.filter((n) => {
+      const b = computeBbox(n);
+      return b ? bboxIntersects(b, region) : false;
+    });
+    if (selection.length === 0) {
+      throw new Error(`No elements in range ${indexSpec} intersect --bbox ${opts.bbox}.`);
+    }
   }
 
   const refIds = new Set<string>();
@@ -71,7 +107,16 @@ export function runGet(path: string, indexSpec: string, opts: GetOptions): void 
   for (const n of selection) children.push(maybeDigestPaths(n, opts.digest ?? false));
 
   const out = serializeSvg(rootAttrs, children);
-  process.stdout.write(out.endsWith("\n") ? out : out + "\n");
+  const final = out.endsWith("\n") ? out : out + "\n";
+  if (opts.out) {
+    writeFileSync(opts.out, final);
+    // Summary on stderr so a stdout pipeline (`svq get ... | grep`) still
+    // works even when --out is set; users who want the file path on stdout
+    // can omit --out and redirect.
+    process.stderr.write(`wrote ${fmtSize(final.length)} → ${opts.out}\n`);
+    return;
+  }
+  process.stdout.write(final);
 }
 
 function parseRange(spec: string, total: number): [number, number] {

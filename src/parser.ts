@@ -60,7 +60,8 @@ export function parseSvgString(xml: string): ParsedSvg {
   if (!rootNode) throw new Error("Failed to parse <svg> root");
 
   const rootAttrs = rootNode.attrs;
-  const topChildren = rootNode.children.filter((c) => c.tag !== "#text");
+  const rawTopChildren = rootNode.children.filter((c) => c.tag !== "#text");
+  const topChildren = unwrapTopChildren(rawTopChildren);
 
   let defs: SvgNode | null = null;
   const defsById = new Map<string, SvgNode>();
@@ -77,6 +78,49 @@ export function parseSvgString(xml: string): ParsedSvg {
   }
 
   return { root: rootNode, rootAttrs, topChildren, defs, defsById };
+}
+
+// Figma exports often wrap the entire scene in a single <g> (typically with
+// just a transform or no attributes at all). That wrapper hides every real
+// element one level down, which makes `tree`/`components` collapse to a
+// single useless line. Repeatedly unwrap while the only non-defs top-level
+// element is a structurally-empty <g>, pushing the wrapper's transform down
+// onto each child so geometry stays correct.
+//
+// Wrappers with rendering-affecting attrs — filter, clip-path, mask, opacity,
+// fill/stroke, etc. — are left alone, because dropping the <g> would silently
+// drop those effects (and the refs they pull into the defs closure).
+const UNWRAP_SAFE_ATTRS = new Set(["transform"]);
+
+function isSafeWrapper(node: SvgNode): boolean {
+  if (node.tag !== "g") return false;
+  for (const k of Object.keys(node.attrs)) {
+    if (!UNWRAP_SAFE_ATTRS.has(k)) return false;
+  }
+  return true;
+}
+
+export function unwrapTopChildren(topChildren: SvgNode[]): SvgNode[] {
+  let current = topChildren;
+  while (true) {
+    const nonDefs = current.filter((c) => c.tag !== "defs" && c.tag !== "#text");
+    if (nonDefs.length !== 1) break;
+    const wrapper = nonDefs[0];
+    if (!isSafeWrapper(wrapper)) break;
+    const realChildren = wrapper.children.filter((c) => c.tag !== "#text");
+    if (realChildren.length === 0) break;
+
+    const defsSiblings = current.filter((c) => c.tag === "defs");
+    const wrapperT = wrapper.attrs.transform;
+    const promoted = realChildren.map((c) => {
+      if (!wrapperT) return c;
+      const childT = c.attrs.transform;
+      const combined = childT ? `${wrapperT} ${childT}` : wrapperT;
+      return { ...c, attrs: { ...c.attrs, transform: combined } };
+    });
+    current = [...defsSiblings, ...promoted];
+  }
+  return current;
 }
 
 function collectIds(node: SvgNode, out: Map<string, SvgNode>): void {

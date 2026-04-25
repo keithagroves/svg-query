@@ -1,5 +1,6 @@
 import { parseSvgFile } from "../parser.js";
 import { digestPath } from "../digest.js";
+import { formatPaint, resolvePaint } from "../paints.js";
 import type { SvgNode } from "../types.js";
 
 function walkAll(nodes: SvgNode[], cb: (n: SvgNode) => void): void {
@@ -26,6 +27,7 @@ export function runAnalyze(path: string): void {
   const gradients = { linear: 0, radial: 0 };
   const filters: string[] = [];
   const pathStats = { text: 0, icon: 0, other: 0, bytes: 0 };
+  const rasters = { count: 0, bytes: 0, mimes: new Map<string, number>() };
 
   walkAll(svg.topChildren, (n) => {
     if (n.tag !== "#text") tagCounts.set(n.tag, (tagCounts.get(n.tag) ?? 0) + 1);
@@ -53,6 +55,16 @@ export function runAnalyze(path: string): void {
       if (dg.likelyText) pathStats.text++;
       else if (dg.likelyIcon) pathStats.icon++;
       else pathStats.other++;
+    }
+    if (n.tag === "image") {
+      const href = a.href ?? a["xlink:href"] ?? "";
+      if (href.startsWith("data:")) {
+        rasters.count++;
+        rasters.bytes += href.length;
+        const m = href.match(/^data:([^;,]+)/);
+        const mime = m ? m[1] : "data";
+        rasters.mimes.set(mime, (rasters.mimes.get(mime) ?? 0) + 1);
+      }
     }
   });
 
@@ -88,6 +100,12 @@ export function runAnalyze(path: string): void {
     console.log(
       `\nGradients:   ${gradients.linear} linear, ${gradients.radial} radial`,
     );
+    for (const [id, node] of svg.defsById) {
+      if (node.tag !== "linearGradient" && node.tag !== "radialGradient") continue;
+      const resolved = resolvePaint(`url(#${id})`, svg.defsById);
+      if (!resolved) continue;
+      console.log(`  ${id.padEnd(24)} ${formatPaint(resolved)}`);
+    }
   }
   if (filters.length > 0) console.log(`Filters:     ${filters.join(", ")}`);
 
@@ -105,6 +123,18 @@ export function runAnalyze(path: string): void {
     );
     console.log(
       "   to preserve <text> elements — this dramatically improves UI generation.",
+    );
+  }
+
+  if (rasters.count > 0) {
+    const kb = (rasters.bytes / 1024).toFixed(1);
+    const mimes = [...rasters.mimes.keys()].join(", ");
+    console.log();
+    console.log(
+      `⚠  Contains ${rasters.count} embedded bitmap(s) (~${kb}KB ${mimes}). Render via`,
+    );
+    console.log(
+      "   <img> with the original raster, not as inline SVG — there's no vector data.",
     );
   }
 }

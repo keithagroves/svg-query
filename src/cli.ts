@@ -3,6 +3,7 @@ import { runTree } from "./commands/tree.js";
 import { runGet } from "./commands/get.js";
 import { runAnalyze } from "./commands/analyze.js";
 import { runComponents } from "./commands/components.js";
+import { runAt } from "./commands/at.js";
 
 const program = new Command();
 
@@ -14,8 +15,9 @@ program
 program
   .command("tree <file>")
   .description("List top-level elements with bbox, fill, refs, and size.")
-  .action((file: string) => {
-    runTree(file);
+  .option("--resolve-paints", "expand url(#…) fills/strokes to inline color summaries")
+  .action((file: string, opts: Record<string, boolean>) => {
+    runTree(file, { resolvePaints: opts.resolvePaints });
   });
 
 program
@@ -23,8 +25,21 @@ program
   .description("Extract element(s) as a standalone SVG. Index can be N or A..B.")
   .option("--crop", "shrink viewBox to the element bbox")
   .option("--digest", "replace long path d attributes with a summary")
-  .action((file: string, indexSpec: string, opts: Record<string, boolean>) => {
-    runGet(file, indexSpec, opts);
+  .option("--bbox <x,y,w,h>", "only include elements intersecting this region")
+  .option("--out <path>", "write output to a file instead of stdout")
+  .action((file: string, indexSpec: string, opts: Record<string, string | boolean>) => {
+    runGet(
+      file,
+      indexSpec,
+      opts as { crop?: boolean; digest?: boolean; bbox?: string; out?: string },
+    );
+  });
+
+program
+  .command("at <file> <point>")
+  .description("List elements whose bbox contains the point (format: x,y).")
+  .action((file: string, point: string) => {
+    runAt(file, point);
   });
 
 program
@@ -37,8 +52,9 @@ program
 program
   .command("components <file>")
   .description("Infer component structure via spatial containment.")
-  .action((file: string) => {
-    runComponents(file);
+  .option("--resolve-paints", "expand url(#…) fills/strokes to inline color summaries")
+  .action((file: string, opts: Record<string, boolean>) => {
+    runComponents(file, { resolvePaints: opts.resolvePaints });
   });
 
 program.parseAsync(process.argv).catch((err) => {

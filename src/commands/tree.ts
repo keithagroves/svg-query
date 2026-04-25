@@ -3,12 +3,22 @@ import { computeBbox } from "../bbox.js";
 import { collectRefs } from "../refs.js";
 import { classifyElement, digestPath } from "../digest.js";
 import { fmtBbox, fmtSize } from "../format.js";
-import type { SvgNode } from "../types.js";
+import { formatPaint, resolvePaint } from "../paints.js";
+import type { ParsedSvg, SvgNode } from "../types.js";
 
-function describeFill(node: SvgNode): string {
+export type TreeOptions = { resolvePaints?: boolean };
+
+function describeFill(
+  node: SvgNode,
+  svg: ParsedSvg,
+  resolvePaintsOpt: boolean,
+): string {
   const f = node.attrs.fill;
   if (!f || f === "none") return "";
-  if (f.startsWith("url(")) return f;
+  if (f.startsWith("url(") && resolvePaintsOpt) {
+    const r = resolvePaint(f, svg.defsById);
+    if (r) return formatPaint(r);
+  }
   return f;
 }
 
@@ -23,7 +33,7 @@ function summarizeDefs(defs: SvgNode): string {
   return parts.join(", ");
 }
 
-export function runTree(path: string): void {
+export function runTree(path: string, opts: TreeOptions = {}): void {
   const svg = parseSvgFile(path);
   const w = svg.rootAttrs.width ?? "?";
   const h = svg.rootAttrs.height ?? "?";
@@ -31,6 +41,7 @@ export function runTree(path: string): void {
   console.log(`svg ${w}×${h}${vb}`);
 
   const nonDefs = svg.topChildren.filter((c) => c.tag !== "defs");
+  const resolvePaintsOpt = !!opts.resolvePaints;
   for (let i = 0; i < nonDefs.length; i++) {
     const node = nonDefs[i];
     const isLast = i === nonDefs.length - 1 && !svg.defs;
@@ -38,7 +49,7 @@ export function runTree(path: string): void {
     const kind = classifyElement(node);
     const bbox = fmtBbox(computeBbox(node));
     const id = node.attrs.id ? ` id=${node.attrs.id}` : "";
-    const fill = describeFill(node);
+    const fill = describeFill(node, svg, resolvePaintsOpt);
     const fillStr = fill ? ` fill=${fill}` : "";
 
     let extra = "";
