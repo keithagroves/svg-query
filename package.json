@@ -1,6 +1,6 @@
 {
   "name": "svg-query",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "svg query — inspect SVG files layer-by-layer for LLM-driven UI generation.",
   "type": "module",
   "main": "./dist/cli.js",
